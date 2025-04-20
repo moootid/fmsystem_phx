@@ -2,13 +2,13 @@ import Config
 
 # Configure your database
 config :fmsystem, Fmsystem.Repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "localhost",
-  database: "fmsystem_dev",
+  username: System.get_env("DB_USER") || "postgres",
+  password: System.get_env("DB_PASS") || "password",
+  database: System.get_env("DB_NAME") || "example_db", # Adjust dev/prod names as needed
+  hostname: System.get_env("DB_HOST") || "localhost",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
-  pool_size: 10
+  pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10")
 
 # For development, we disable any cache and enable
 # debugging and code reloading.
