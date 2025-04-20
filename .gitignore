@@ -27,3 +27,4 @@ fmsystem-*.tar
 
 diff.txt
 create_diff.sh
+.env
