@@ -14,6 +14,12 @@ defmodule FmsystemWeb.Endpoint do
   # socket "/live", Phoenix.LiveView.Socket,
   #   websocket: [connect_info: [session: @session_options]],
   #   longpoll: [connect_info: [session: @session_options]]
+  socket "/socket", FmsystemWeb.UserSocket,
+    websocket: [
+      connect_info: [:peer_data, :x_headers, session: @session_options]
+      # timeout: 60_000 # Optional: Increase timeout if needed
+    ],
+    longpoll: false
 
   # Serve at "/" the static files from "priv/static" directory.
   #
