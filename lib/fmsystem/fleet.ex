@@ -20,8 +20,8 @@ defmodule Fmsystem.Fleet do
 
     # Optionally preload latest telemetry here or let the JSON view handle it
     vehicles = Repo.all(query)
-    # Example: Preload latest telemetry for all vehicles
-    # Repo.preload(vehicles)
+    # Ensure preloads needed by VehicleJSON.data are here
+    Repo.preload(vehicles, [:iot_device])
   end
 
   def get_vehicle!(id),
