@@ -30,11 +30,15 @@ if config_env() == :prod do
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
+  config :fmsystem,
+      jwt_secret: System.get_env("JWT_SECRET_KEY") || "your_jwt_secret_key"
+
   config :fmsystem, Fmsystem.Repo,
     # ssl: true,
     username: System.get_env("DB_USER") || "postgres",
     password: System.get_env("DB_PASS") || "password",
-    database: System.get_env("DB_NAME") || "example_db", # Adjust dev/prod names as needed
+    # Adjust dev/prod names as needed
+    database: System.get_env("DB_NAME") || "example_db",
     hostname: System.get_env("DB_HOST") || "localhost",
     port: String.to_integer(System.get_env("DB_PORT") || "5432"),
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10")
