@@ -43,5 +43,29 @@ defmodule FmsystemWeb.Endpoint do
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options
+  # --- CORS Configuration ---
+  # IMPORTANT: Restrict origin in production!
+  plug CORSPlug,
+    # Use System.get_env("CORS_ORIGIN") or a list in prod
+    origin: "*",
+    methods: ~w(GET POST PUT PATCH DELETE OPTIONS),
+    # Add any other headers clients send
+    headers: ~w(Authorization Content-Type X-Requested-With),
+    # 1 day
+    max_age: 86_400,
+    credentials: true
+
+  # --- Session Configuration ---
+  # Needed for flash messages, CSRF protection (if used), etc. Can be minimal for API.
+  plug Plug.Session,
+    store: :cookie,
+    key: "_fmsystem_key",
+    # Use `mix phx.gen.secret 32`
+    signing_salt: "CHANGE_ME_SIGNING",
+    # Use `mix phx.gen.secret 32`
+    encryption_salt: "CHANGE_ME_ENCRYPTION"
+
+  # --- Router ---
+  # Comes *after* CORS, Parsers, Session
   plug FmsystemWeb.Router
 end
