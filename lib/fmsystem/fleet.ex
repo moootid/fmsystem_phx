@@ -41,9 +41,42 @@ defmodule Fmsystem.Fleet do
     |> Vehicle.changeset(attrs)
     |> Repo.insert()
     # Preload associations after successful creation if needed immediately
+    # Tap into the result
+    |> tap(&maybe_broadcast_vehicle_created/1)
     |> case do
       {:ok, vehicle} -> {:ok, Repo.preload(vehicle, [:iot_device])}
       error -> error
+    end
+  end
+
+  # Example: Add update_vehicle function
+  def update_vehicle(%Vehicle{} = vehicle, attrs) do
+    vehicle
+    |> Vehicle.changeset(attrs)
+    |> Repo.update()
+    |> tap(&maybe_broadcast_vehicle_updated/1)
+    |> case do
+      {:ok, updated_vehicle} ->
+        {:ok, Repo.preload(updated_vehicle, [:iot_device])}
+
+      error ->
+        error
+    end
+  end
+
+  # Example: Add delete_vehicle function
+  def delete_vehicle(%Vehicle{} = vehicle) do
+    # Capture ID before deletion
+    original_id = vehicle.id
+
+    case Repo.delete(vehicle) do
+      {:ok, _deleted_struct} ->
+        # Broadcast deletion
+        FmsystemWeb.VehicleChannel.broadcast_vehicle_deleted(original_id)
+        {:ok, original_id}
+
+      error ->
+        error
     end
   end
 
@@ -87,4 +120,26 @@ defmodule Fmsystem.Fleet do
   defp latest_telemetry_query() do
     from(t in Telemetry, order_by: [desc: t.time], limit: 1)
   end
+
+  # --- Private Broadcasting Helpers ---
+  defp maybe_broadcast_vehicle_created({:ok, vehicle}) do
+    # Preload data needed for the broadcast payload *before* broadcasting
+    # Ensure the data matches what VehicleJSON expects
+    preloaded_vehicle =
+      Repo.preload(vehicle, [:iot_device])
+
+      FmsystemWeb.VehicleChannel.broadcast_vehicle_created(preloaded_vehicle)
+  end
+
+  # Don't broadcast on error
+  defp maybe_broadcast_vehicle_created({:error, _changeset}), do: :ok
+
+  defp maybe_broadcast_vehicle_updated({:ok, vehicle}) do
+    preloaded_vehicle =
+      Repo.preload(vehicle, [:iot_device])
+
+      FmsystemWeb.VehicleChannel.broadcast_vehicle_updated(preloaded_vehicle)
+  end
+
+  defp maybe_broadcast_vehicle_updated({:error, _changeset}), do: :ok
 end
