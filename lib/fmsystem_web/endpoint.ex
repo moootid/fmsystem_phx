@@ -74,4 +74,14 @@ defmodule FmsystemWeb.Endpoint do
   # --- Router ---
   # Comes *after* CORS, Parsers, Session
   plug FmsystemWeb.Router
+
+  # Make session options available if needed by connect_info
+  @session_options [
+    store: :cookie,
+    key: "_fmsystem_key",
+    # Use your actual salt
+    signing_salt: "CHANGE_ME_SIGNING",
+    # Use your actual salt
+    encryption_salt: "CHANGE_ME_ENCRYPTION"
+  ]
 end
