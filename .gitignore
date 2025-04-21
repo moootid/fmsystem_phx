@@ -29,3 +29,5 @@ diff.txt
 create_diff.sh
 .env
 .repomixignore
+repomix-output.txt
+repomix.config.json
