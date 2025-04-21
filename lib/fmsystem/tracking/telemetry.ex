@@ -11,11 +11,16 @@ defmodule Fmsystem.Tracking.Telemetry do
   # @derive {Jason.Encoder, only: [:time, :iot_id, :vehicle_id, :rpm, :speed, ...]}
 
   schema "telemetry" do
-    # Timestamp is essential for TimescaleDB
-    # Use native Elixir type, maps to timestamptz via Postgrex
-    field :time, :utc_datetime_usec
+    # The serial ID from the database
+    field :id, :integer
 
-    # Foreign keys
+    # Timestamps as defined in migration
+    # Maps to timestamptz
+    field :created_at, :utc_datetime_usec
+    # Maps to timestamptz
+    field :inserted_at, :utc_datetime_usec
+
+    # Foreign keys - Must specify type: :binary_id
     belongs_to :iot, IoT, foreign_key: :iot_id, type: :binary_id
     belongs_to :vehicle, Vehicle, foreign_key: :vehicle_id, type: :binary_id
 
@@ -39,9 +44,8 @@ defmodule Fmsystem.Tracking.Telemetry do
   def changeset(telemetry, attrs) do
     telemetry
     |> cast(attrs, [
-      # Allow setting time explicitly, otherwise default in DB works
-      :time,
-      # Required foreign keys
+      :created_at,
+      :inserted_at,
       :iot_id,
       :vehicle_id,
       :rpm,
