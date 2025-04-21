@@ -1,10 +1,14 @@
 import Config
 
+config :fmsystem,
+  jwt_secret: System.get_env("JWT_SECRET_KEY") || "your_jwt_secret_key"
+
 # Configure your database
 config :fmsystem, Fmsystem.Repo,
   username: System.get_env("DB_USER") || "postgres",
   password: System.get_env("DB_PASS") || "password",
-  database: System.get_env("DB_NAME") || "example_db", # Adjust dev/prod names as needed
+  # Adjust dev/prod names as needed
+  database: System.get_env("DB_NAME") || "example_db",
   hostname: System.get_env("DB_HOST") || "localhost",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
