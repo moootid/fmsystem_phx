@@ -16,8 +16,8 @@ defmodule Fmsystem.Repo.Migrations.CreateTelemetryTable do
       add :sw_version, :text
       add :hw_version, :text
       add :status, :text
-      add :iot_id, references(:iot, type: :uuid)
-      add :vehicle_id, references(:vehicles, type: :uuid)
+      add :iot_id, references(:iot, type: :binary_id)
+      add :vehicle_id, references(:vehicles, type: :binary_id)
       add :created_at, :timestamptz, default: fragment("NOW()"), null: false
       # Explicitly add the inserted_at column for partitioning
       add :inserted_at, :timestamptz, null: false, default: fragment("NOW()")
