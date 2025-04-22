@@ -170,7 +170,7 @@ variable "app_image_uri" {
 variable "db_image_name" {
   description = "Docker image name for TimescaleDB."
   type        = string
-  default     = "timescale/timescaledb-ha:pg16"
+  default     = "timescale/timescaledb:latest-pg16"
 }
 
 variable "watchtower_poll_interval" {
