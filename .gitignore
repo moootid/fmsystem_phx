@@ -38,3 +38,4 @@ terraform.tfvars
 rel
 tfplan
 terraform.tfstate.backup
+*.backup
