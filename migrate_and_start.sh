@@ -39,7 +39,28 @@ fi
 # Run Migrations
 echo "Running database migrations..."
 # Use the release command format
-eval "${APP_BIN} eval \"Fmsystem.Release.migrate\""
+# eval "${APP_BIN} eval \"Fmsystem.Release.migrate\""
+echo "Waiting for database to be ready..."
+max_attempts=10
+attempt=1
+
+while [ $attempt -le $max_attempts ]; do
+  if $APP_BIN eval "Fmsystem.Release.migrate" >/dev/null 2>&1; then
+    echo "Database is ready."
+    break
+  else
+    echo "Attempt $attempt: DB not ready, sleeping for 10 seconds..."
+    sleep 10
+    attempt=$((attempt + 1))
+  fi
+done
+
+if [ $attempt -gt $max_attempts ]; then
+  echo "Database did not become available after $max_attempts attempts."
+  exit 1
+fi
+
+echo "Starting Fmsystem..."
 echo "Migrations finished."
 
 # Run Seeds (Optional - uncomment if you have seeds to run)
