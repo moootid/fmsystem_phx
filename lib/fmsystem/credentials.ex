@@ -5,15 +5,18 @@ defmodule Fmsystem.Credentials do
   alias Fmsystem.Credentials.APIAuth
 
   def list_api_auths(current_user) do
-    query = from(a in APIAuth, preload: [:iot_devices]) # Preload associated devices
+    # Preload associated devices
+    query = from(a in APIAuth, preload: [:iot_devices])
 
     query =
       if current_user.role == :admin do
-        query # Admins see all
+        # Admins see all
+        query
       else
         # Users see only their own
         from(a in query, where: a.created_by_id == ^current_user.id)
       end
+
     Repo.all(query)
   end
 
@@ -22,6 +25,7 @@ defmodule Fmsystem.Credentials do
 
   def create_api_auth(current_user, attrs \\ %{}) do
     attrs = Map.put(attrs, "created_by_id", current_user.id)
+
     %APIAuth{}
     |> APIAuth.changeset(attrs)
     |> Repo.insert()
@@ -35,10 +39,41 @@ defmodule Fmsystem.Credentials do
     case iot_device.api_auth do
       %APIAuth{token: expected_token} ->
         expected_token == provided_token
+
       _ ->
-        false # No associated APIAuth or not preloaded
+        # No associated APIAuth or not preloaded
+        false
     end
   end
 
-  # Add update/delete functions as needed
+  @doc """
+  Updates an API credential. Only allows title and description changes.
+  Authorization should be checked before calling this function.
+  """
+  def update_api_auth(%APIAuth{} = api_auth, attrs) do
+    # Explicitly only allow title and description updates
+    # Token and created_by_id should not be changed here.
+    api_auth
+    # Use existing changeset
+    |> APIAuth.changeset(attrs)
+    # Optionally, add specific validation for updates if needed
+    # |> Changeset.validate_change(...)
+    |> Repo.update()
+
+    # Returns {:ok, updated_api_auth} or {:error, changeset}
+    # Note: No broadcast needed typically for API key changes unless UI depends on title/desc in real-time
+  end
+
+  @doc """
+  Deletes an API credential.
+  Authorization should be checked before calling this function.
+  Handles potential constraint errors if IoT devices still reference it (:restrict).
+  """
+  def delete_api_auth(%APIAuth{} = api_auth) do
+    # Repo.delete() will return {:error, changeset} if constraints fail
+    # (like the iot_api_auth_id_fkey with ON DELETE RESTRICT)
+    Repo.delete(api_auth)
+    # Returns {:ok, deleted_api_auth} or {:error, changeset/reason}
+    # Note: No broadcast typically needed
+  end
 end
