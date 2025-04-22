@@ -36,3 +36,5 @@ terraform.tfstate
 terraform.tfvars
 .terraform.lock.hcl
 rel
+tfplan
+terraform.tfstate.backup
