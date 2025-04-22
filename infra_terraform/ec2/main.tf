@@ -186,7 +186,6 @@ resource "aws_security_group" "app_sg" {
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_sg.id]
   }
-
   # Allow SSH access
   ingress {
     from_port   = 22
@@ -194,7 +193,6 @@ resource "aws_security_group" "app_sg" {
     protocol    = "tcp"
     cidr_blocks = [var.ssh_access_cidr]
   }
-  
   egress {
     from_port   = 0
     to_port     = 0
@@ -471,10 +469,10 @@ data "template_file" "app_user_data" {
 
     echo "DB is ready; starting the application container."
     docker run -d \
-      --name fmsystem_phx  \
+      --name elixir_app  \
       -p ${var.app_container_port}:${var.app_container_port} \
       -e MIX_ENV=prod \
-      -e DATABASE_URL="postgres://${var.db_user}:${var.db_password}@${data.aws_instance.db_instance.private_ip}:5432/${var.db_name}" \
+      -e DATABASE_URL="ecto://${var.db_user}:${var.db_password}@${data.aws_instance.db_instance.private_ip}:5432/${var.db_name}" \
       -e DB_USER="${var.db_user}" \
       -e DB_PASSWORD="${var.db_password}" \
       -e DB_HOST="${data.aws_instance.db_instance.private_ip}" \
