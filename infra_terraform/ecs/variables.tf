@@ -159,7 +159,7 @@ variable "dockerhub_email" {
 variable "app_image_name" {
   description = "Name of the application Docker image (without tag or username)."
   type        = string
-  default     = "fmsystem"
+  default     = "fmsystem_phx"
 }
 
 variable "app_image_tag" {
