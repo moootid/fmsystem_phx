@@ -32,13 +32,6 @@ COPY . .
 
 RUN mix deps.compile
 
-# Copy source code
-# Note: assets are likely not needed based on --no-assets, but included defensively
-# COPY priv priv/
-# COPY lib lib/
-# COPY assets assets/ 
-# COPY rel rel/     
-
 # Compile the application including assets if needed
 # RUN mix assets.deploy # Uncomment if you add assets later
 RUN mix compile
@@ -84,6 +77,3 @@ EXPOSE ${PORT}
 
 # Set the entrypoint to our custom script that handles migrations
 ENTRYPOINT ["/app/migrate_and_start.sh"]
-
-# Default command (is overridden by ENTRYPOINT, but good practice)
-# CMD ["/app/bin/server"]
