@@ -3,6 +3,7 @@ defmodule FmsystemWeb.VehicleChannel do
   # To potentially fetch user info if needed for authZ
   # <-- Add Fleet context
   alias Fmsystem.{Accounts, Fleet}
+  alias Fmsystem.Tracking.Telemetry
   # <-- Need the JSON renderer
   alias FmsystemWeb.VehicleJSON
   require Logger
@@ -73,6 +74,58 @@ defmodule FmsystemWeb.VehicleChannel do
     payload = %{id: vehicle_id}
     FmsystemWeb.Endpoint.broadcast(@vehicle_topic, "vehicle_deleted", payload)
   end
+
+  @doc """
+  Broadcasts that a new telemetry record was added for a vehicle.
+  """
+  def broadcast_telemetry_updated(%Telemetry{} = telemetry_record) do
+    # We need to inform clients which vehicle this telemetry belongs to.
+    # The payload should ideally represent the *updated state* of the vehicle's
+    # latest telemetry, not just the raw new telemetry record.
+
+    # Option 1: Send only the relevant telemetry bits + vehicle_id
+    # payload = %{
+    #   vehicle_id: telemetry_record.vehicle_id, # Essential to identify the vehicle
+    #   telemetry: %{ # Send only necessary fields
+    #     inserted_at: telemetry_record.inserted_at,
+    #     lat: telemetry_record.lat,
+    #     long: telemetry_record.long,
+    #     speed: telemetry_record.speed,
+    #     status: telemetry_record.status
+    #     # Add other fields clients need
+    #   }
+    # }
+    # FmsystemWeb.Endpoint.broadcast(@vehicle_topic, "telemetry_updated", payload)
+
+    # Option 2 (More robust): Re-fetch the vehicle with its *new* latest_telemetry
+    # This ensures the client receives the same structure as initial load/vehicle updates.
+    # Requires fetching the vehicle after telemetry insert.
+    # Note: This adds a DB read after each telemetry insert, consider performance.
+    case Fleet.get_vehicle(telemetry_record.vehicle_id) do
+      nil ->
+        Logger.warning(
+          "Cannot broadcast telemetry update: Vehicle #{telemetry_record.vehicle_id} not found."
+        )
+
+      %Fmsystem.Fleet.Vehicle{} = vehicle ->
+        # Vehicle fetched will now have the new telemetry record as latest_telemetry
+        # due to the order_by clause in latest_telemetry_query.
+        # We broadcast the *entire updated vehicle* data structure.
+        payload = %{data: VehicleJSON.data(vehicle)}
+        FmsystemWeb.Endpoint.broadcast(@vehicle_topic, "vehicle_updated", payload)
+
+      # Note: We reuse "vehicle_updated" event here. Clients update the whole vehicle.
+      # Alternatively, define a new event like "latest_telemetry_changed"
+      # FmsystemWeb.Endpoint.broadcast(@vehicle_topic, "latest_telemetry_changed", payload)
+      _ ->
+        Logger.error(
+          "Unexpected result fetching vehicle #{telemetry_record.vehicle_id} for telemetry broadcast."
+        )
+    end
+  end
+
+  # Add clause for nil if telemetry_record could be nil (unlikely from Tracking context)
+  def broadcast_telemetry_updated(nil), do: :ok
 
   # Channels can be used in a request/response fashion
   # by sending replies to requests from the client
