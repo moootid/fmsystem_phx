@@ -31,3 +31,7 @@ create_diff.sh
 .repomixignore
 repomix-output.txt
 repomix.config.json
+.terraform
+terraform.tfstate
+terraform.tfvars
+.terraform.lock.hcl
