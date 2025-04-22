@@ -74,7 +74,6 @@ defmodule Fmsystem.Fleet.Vehicle do
     ])
     |> validate_required([:code, :vin, :created_by_id])
     # Standard VIN length
-    |> validate_length(:vin, is: 17)
     |> unique_constraint(:code)
     |> unique_constraint(:vin)
     # Plate uniqueness might be handled differently (e.g., unique per region/user)
