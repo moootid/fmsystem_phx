@@ -32,19 +32,26 @@ defmodule FmsystemWeb.Router do
       # API Auth CRUD
       get "/api_auth", ApiAuthController, :index
       post "/api_auth", ApiAuthController, :create
-      # delete "/api_auth/:id", ApiAuthController, :delete # Example delete
+      get "/api_auth/:id", ApiAuthController, :show
+      patch "/api_auth/:id", ApiAuthController, :update
+      put "/api_auth/:id", ApiAuthController, :update
+      delete "/api_auth/:id", ApiAuthController, :delete
 
       # Vehicle CRUD
       get "/vehicles", VehicleController, :index
       post "/vehicles", VehicleController, :create
-      # Example show
       get "/vehicles/:id", VehicleController, :show
-      # put "/vehicles/:id", VehicleController, :update # Example update
+      patch "/vehicles/:id", VehicleController, :update
+      put "/vehicles/:id", VehicleController, :update
+      delete "/vehicles/:id", VehicleController, :delete
 
       # IoT CRUD
       get "/iot", IotController, :index
       post "/iot", IotController, :create
-      # get "/iot/:id", IotController, :show # Example show
+      get "/iot/:id", IotController, :show
+      patch "/iot/:id", IotController, :update
+      put "/iot/:id", IotController, :update
+      delete "/iot/:id", IotController, :delete
     end
   end
 end
