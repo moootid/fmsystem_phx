@@ -6,7 +6,7 @@ config :fmsystem,
 # Configure your database
 config :fmsystem, Fmsystem.Repo,
   username: System.get_env("DB_USER") || "postgres",
-  password: System.get_env("DB_PASS") || "password",
+  password: System.get_env("DB_PASSWORD") || "password",
   # Adjust dev/prod names as needed
   database: System.get_env("DB_NAME") || "example_db",
   hostname: System.get_env("DB_HOST") || "localhost",
