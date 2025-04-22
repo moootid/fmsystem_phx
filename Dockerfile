@@ -35,10 +35,10 @@ RUN mix deps.compile
 # Compile the application including assets if needed
 # RUN mix assets.deploy # Uncomment if you add assets later
 RUN mix compile
-
+RUN mix phx.gen.release
 # Build the release
 # The release task copies the custom script from rel/overlays/bin
-RUN mix phx.gen.release
+RUN MIX_ENV=prod mix release
 
 # === Runner Stage ===
 FROM alpine:3.21 AS app
