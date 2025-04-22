@@ -5,7 +5,7 @@ defmodule Fmsystem.Fleet do
   alias Fmsystem.Fleet.{Vehicle, IoT}
   # For latest telemetry query
   alias Fmsystem.Tracking.Telemetry
-
+  alias FmsystemWeb.VehicleChannel
   # --- Vehicle Functions ---
   def list_vehicles(current_user) do
     # Preload IoT device
@@ -21,18 +21,23 @@ defmodule Fmsystem.Fleet do
     # Optionally preload latest telemetry here or let the JSON view handle it
     vehicles = Repo.all(query)
     # Ensure preloads needed by VehicleJSON.data are here
-    Repo.preload(vehicles, [:iot_device])
+    Repo.preload(vehicles, [:iot_device, latest_telemetry: latest_telemetry_query()])
   end
 
   def get_vehicle!(id),
     do:
       Repo.get!(Vehicle, id)
-      |> Repo.preload([:iot_device])
+      |> Repo.preload([:iot_device, latest_telemetry: Vehicle.latest_telemetry_query()])
 
-  def get_vehicle(id),
-    do:
-      Repo.get(Vehicle, id)
-      |> Repo.preload([:iot_device])
+  def get_vehicle(id) do
+    case Repo.get(Vehicle, id) do
+      nil ->
+        nil
+
+      vehicle ->
+        Repo.preload(vehicle, [:iot_device, latest_telemetry: Vehicle.latest_telemetry_query()])
+    end
+  end
 
   def create_vehicle(current_user, attrs \\ %{}) do
     attrs = Map.put(attrs, "created_by_id", current_user.id)
@@ -44,7 +49,7 @@ defmodule Fmsystem.Fleet do
     # Tap into the result
     |> tap(&maybe_broadcast_vehicle_created/1)
     |> case do
-      {:ok, vehicle} -> {:ok, Repo.preload(vehicle, [:iot_device])}
+      {:ok, vehicle} -> {:ok, get_vehicle!(vehicle.id)}
       error -> error
     end
   end
@@ -57,7 +62,7 @@ defmodule Fmsystem.Fleet do
     |> tap(&maybe_broadcast_vehicle_updated/1)
     |> case do
       {:ok, updated_vehicle} ->
-        {:ok, Repo.preload(updated_vehicle, [:iot_device])}
+        {:ok, get_vehicle!(updated_vehicle.id)}
 
       error ->
         error
@@ -72,7 +77,7 @@ defmodule Fmsystem.Fleet do
     case Repo.delete(vehicle) do
       {:ok, _deleted_struct} ->
         # Broadcast deletion
-        FmsystemWeb.VehicleChannel.broadcast_vehicle_deleted(original_id)
+        VehicleChannel.broadcast_vehicle_deleted(original_id)
         {:ok, original_id}
 
       error ->
@@ -118,7 +123,7 @@ defmodule Fmsystem.Fleet do
 
   # --- Helper Queries ---
   defp latest_telemetry_query() do
-    from(t in Telemetry, order_by: [desc: t.time], limit: 1)
+    from(t in Telemetry, order_by: [desc: t.inserted_at], limit: 1)
   end
 
   # --- Private Broadcasting Helpers ---
@@ -126,9 +131,9 @@ defmodule Fmsystem.Fleet do
     # Preload data needed for the broadcast payload *before* broadcasting
     # Ensure the data matches what VehicleJSON expects
     preloaded_vehicle =
-      Repo.preload(vehicle, [:iot_device])
+      get_vehicle!(vehicle.id)
 
-      FmsystemWeb.VehicleChannel.broadcast_vehicle_created(preloaded_vehicle)
+    VehicleChannel.broadcast_vehicle_created(preloaded_vehicle)
   end
 
   # Don't broadcast on error
@@ -136,9 +141,9 @@ defmodule Fmsystem.Fleet do
 
   defp maybe_broadcast_vehicle_updated({:ok, vehicle}) do
     preloaded_vehicle =
-      Repo.preload(vehicle, [:iot_device])
+      get_vehicle!(vehicle.id)
 
-      FmsystemWeb.VehicleChannel.broadcast_vehicle_updated(preloaded_vehicle)
+    VehicleChannel.broadcast_vehicle_updated(preloaded_vehicle)
   end
 
   defp maybe_broadcast_vehicle_updated({:error, _changeset}), do: :ok
