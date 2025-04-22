@@ -1,0 +1,47 @@
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: example_db
+      TIMESCALEDB_TELEMETRY: "off"
+    ports:
+      - "5432:5432"
+    # Override PostgreSQL configuration to allow more connections and adjust memory settings.
+    command: >
+      postgres -c max_connections=1000 -c shared_buffers=512MB -c work_mem=4MB -c maintenance_work_mem=64MB
+    restart: always
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d example_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  app:
+    container_name: fmsystem_app_dev
+    # Build the image from the Dockerfile in the current directory
+    build: .
+    # Depend on the database being healthy before starting the app
+    ports:
+      # Map host port 4000 to the container's exposed port
+      - "${PORT:-4000}:${PORT:-4000}"
+    depends_on:
+      db:
+        condition: service_healthy
+    # Load environment variables from the .env.dev file
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  db_data:
