@@ -100,6 +100,38 @@ defmodule Fmsystem.Fleet do
     Repo.all(query)
   end
 
+  @doc """
+  Updates an IoT device.
+  Authorization should be checked before calling.
+  """
+  def update_iot_device(%IoT{} = iot_device, attrs) do
+    iot_device
+    # Use existing changeset for validation
+    |> IoT.changeset(attrs)
+    |> Repo.update()
+    |> case do
+      # Re-fetch with preloads for consistent response data
+      {:ok, updated_iot} -> {:ok, get_iot_device!(updated_iot.id)}
+      error -> error
+    end
+
+    # Note: No broadcast typically needed for IoT device config changes unless a live dashboard depends on it.
+  end
+
+  @doc """
+  Deletes an IoT device.
+  Authorization should be checked before calling.
+  Handles telemetry cascade delete via DB constraint.
+  """
+  def delete_iot_device(%IoT{} = iot_device) do
+    # The ON DELETE CASCADE on telemetry_iot_id_fkey should handle telemetry cleanup.
+    # The ON DELETE RESTRICT on iot_api_auth_id_fkey might prevent deletion
+    # if the API key is still linked - Repo.delete handles this constraint check.
+    Repo.delete(iot_device)
+    # Returns {:ok, deleted_iot} or {:error, changeset/reason}
+    # Note: No broadcast typically needed
+  end
+
   def get_iot_device!(id), do: Repo.get!(IoT, id) |> Repo.preload([:vehicle, :api_auth])
   def get_iot_device(id), do: Repo.get(IoT, id) |> Repo.preload([:vehicle, :api_auth])
 
