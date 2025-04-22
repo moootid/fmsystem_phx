@@ -38,7 +38,7 @@ RUN mix compile
 
 # Build the release
 # The release task copies the custom script from rel/overlays/bin
-RUN mix release
+RUN mix phx.gen.release
 
 # === Runner Stage ===
 FROM alpine:3.21 AS app
