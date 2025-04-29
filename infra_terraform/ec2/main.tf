@@ -592,8 +592,9 @@ resource "aws_lb_target_group" "app_tg" {
   vpc_id      = aws_vpc.main.id
   target_type = "instance"
 
+  # ——————————————— Health check on /api/health ———————————————
   health_check {
-    path                = "/"
+    path                = "/api/health"
     protocol            = "HTTP"
     matcher             = "200-399"
     interval            = 30
