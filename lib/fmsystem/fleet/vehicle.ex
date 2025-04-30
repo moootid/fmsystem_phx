@@ -1,7 +1,8 @@
 defmodule Fmsystem.Fleet.Vehicle do
   use Ecto.Schema
   import Ecto.Changeset
-  import Ecto.Query, only: [from: 2] # Import for query helper
+  # Import for query helper
+  import Ecto.Query, only: [from: 2]
   # Updated reference
   alias Fmsystem.Accounts.User
   # Updated reference
@@ -46,17 +47,20 @@ defmodule Fmsystem.Fleet.Vehicle do
 
     belongs_to :created_by, User, foreign_key: :created_by_id
     has_one :iot_device, IoT, foreign_key: :vehicle_id
-    has_one :latest_telemetry, Telemetry
+    has_one :latest_telemetry, Telemetry, foreign_key: :vehicle_id
+    # order_by: [desc: :inserted_at],
+    # limit: 1
     # Note: We can define latest_telemetry relationship here or query it in context
     # has_many :telemetry_entries, Telemetry, foreign_key: :vehicle_id
 
     timestamps(type: :utc_datetime_usec)
   end
+
   # Helper function to get the query for the latest telemetry record
   # Using inserted_at based on your final migration
-  def latest_telemetry_query() do
-    from(t in Telemetry, order_by: [desc: t.inserted_at], limit: 1)
-  end
+  # def latest_telemetry_query() do
+  #   from(t in Telemetry, order_by: [desc: t.inserted_at], limit: 1)
+  # end
   def changeset(vehicle, attrs) do
     vehicle
     |> cast(attrs, [
