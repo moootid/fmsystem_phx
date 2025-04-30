@@ -20,14 +20,24 @@ defmodule Fmsystem.Fleet do
 
     # Optionally preload latest telemetry here or let the JSON view handle it
     vehicles = Repo.all(query)
+    vehicle_ids = Enum.map(vehicles, & &1.id)
     # Ensure preloads needed by VehicleJSON.data are here
-    Repo.preload(vehicles, [:iot_device, latest_telemetry: latest_telemetry_query()])
+    Repo.preload(vehicles, [
+      :iot_device,
+      latest_telemetry: latest_telemetry_preload_query(vehicle_ids)
+    ])
   end
 
-  def get_vehicle!(id),
-    do:
-      Repo.get!(Vehicle, id)
-      |> Repo.preload([:iot_device, latest_telemetry: Vehicle.latest_telemetry_query()])
+  def get_vehicle!(id) do
+    # Fetch vehicle first
+    vehicle = Repo.get!(Vehicle, id)
+    # --- UPDATED Preload using a function ---
+    # Preload using the helper function (passing a list with single ID)
+    Repo.preload(vehicle, [
+      :iot_device,
+      latest_telemetry: latest_telemetry_preload_query([vehicle.id])
+    ])
+  end
 
   def get_vehicle(id) do
     case Repo.get(Vehicle, id) do
@@ -35,7 +45,11 @@ defmodule Fmsystem.Fleet do
         nil
 
       vehicle ->
-        Repo.preload(vehicle, [:iot_device, latest_telemetry: Vehicle.latest_telemetry_query()])
+        # --- UPDATED Preload using a function ---
+        Repo.preload(vehicle, [
+          :iot_device,
+          latest_telemetry: latest_telemetry_preload_query([vehicle.id])
+        ])
     end
   end
 
@@ -156,6 +170,16 @@ defmodule Fmsystem.Fleet do
   # --- Helper Queries ---
   defp latest_telemetry_query() do
     from(t in Telemetry, order_by: [desc: t.inserted_at], limit: 1)
+  end
+
+  defp latest_telemetry_preload_query(vehicle_ids) do
+    from(t in Telemetry,
+      where: t.vehicle_id in ^vehicle_ids,
+      # DISTINCT ON (vehicle_id) grabs the first row for each vehicle_id...
+      distinct: :vehicle_id,
+      # ...based on this ordering (latest inserted_at first within each vehicle group)
+      order_by: [:vehicle_id, desc: t.inserted_at]
+    )
   end
 
   # --- Private Broadcasting Helpers ---
