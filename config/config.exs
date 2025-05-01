@@ -20,7 +20,8 @@ config :fmsystem, FmsystemWeb.Endpoint,
     layout: false
   ],
   pubsub_server: Fmsystem.PubSub,
-  live_view: [signing_salt: "h9x2wbIY"]
+  live_view: [signing_salt: "h9x2wbIY"],
+  check_origin: false
 
 # Configures Elixir's Logger
 config :logger, :console,
