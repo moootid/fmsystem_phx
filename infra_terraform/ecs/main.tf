@@ -757,7 +757,7 @@ resource "aws_ecs_service" "app_service" {
   deployment_maximum_percent         = 200 # Allow double the desired count during deployment
   deployment_minimum_healthy_percent = 50  # Require at least half to be healthy
 
-  health_check_grace_period_seconds = 60 # Time to allow tasks to start before LB health checks fail deployment
+  health_check_grace_period_seconds = 300 # Time to allow tasks to start before LB health checks fail deployment
 
   propagate_tags = "SERVICE" # Propagate service tags to tasks
   tags           = local.common_tags
