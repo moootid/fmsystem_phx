@@ -239,7 +239,7 @@ variable "app_asg_desired_count" {
 variable "app_cpu_target_value" {
   description = "Target average CPU utilization for ECS auto scaling (%)."
   type        = number
-  default     = 60.0
+  default     = 50.0
 }
 
 variable "app_scale_in_cooldown" {
