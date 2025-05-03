@@ -581,7 +581,7 @@ resource "aws_iam_policy" "ecs_dockerhub_secret_policy" {
           local.dockerhub_secret_arn
           # If the secret uses a KMS key other than the default aws/secretsmanager key,
           # you might also need "kms:Decrypt" permission on that key ARN here.
-          # Example: "arn:aws:kms:us-east-1:ACCOUNT_ID:key/YOUR_KMS_KEY_ID"
+          # Example: "arn:aws:kms:eu-central-1:ACCOUNT_ID:key/YOUR_KMS_KEY_ID"
         ]
       }
     ]
