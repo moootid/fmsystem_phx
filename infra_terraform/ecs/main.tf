@@ -837,7 +837,7 @@ resource "aws_lb_target_group" "app_tg" {
   target_type = "ip" # Changed for Fargate/awsvpc
 
   health_check {
-    path                = "/api/health/" # Adjust if your Elixir app has a specific health check endpoint
+    path                = "/api/health" # Adjust if your Elixir app has a specific health check endpoint
     protocol            = "HTTP"
     matcher             = "200-299"
     interval            = 10
