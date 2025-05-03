@@ -242,6 +242,41 @@ variable "app_scale_out_cooldown" {
   default     = 120 # 2 minutes
 }
 
+
+##############################
+# Application Secrets
+##############################
+variable "jwt_secret_value" {
+  description = "Secret used to sign JWT tokens."
+  type        = string
+  sensitive   = true
+}
+
+variable "secret_key_base_value" {
+  description = "Phoenix secret_key_base for signing and encryption."
+  type        = string
+  sensitive   = true
+}
+
+variable "cors_allowed_origins" {
+  description = "Allowed CORS origins (e.g., comma‑separated list or '*')."
+  type        = string
+  default     = "*"
+}
+
+variable "session_encryption_salt_value" {
+  description = "Salt used for Phoenix session encryption."
+  type        = string
+  sensitive   = true
+}
+
+variable "session_signing_salt_value" {
+  description = "Salt used for Phoenix session signing."
+  type        = string
+  sensitive   = true
+}
+
+
 # Removed EC2 specific variables:
 # - app_ec2_key_pair_name
 # - app_instance_type
