@@ -70,8 +70,8 @@ resource "aws_subnet" "public" {
 
 # Private Subnets (for the DB instance and ECS Tasks)
 resource "aws_subnet" "private" {
-  count                   = var.private_subnet_count
-  vpc_id                  = aws_vpc.main.id
+  count  = var.private_subnet_count
+  vpc_id = aws_vpc.main.id
   # Offset subnet indices so private subnets don’t overlap with public
   cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index + var.public_subnet_count)
   map_public_ip_on_launch = false
@@ -112,7 +112,7 @@ resource "aws_route_table_association" "public" {
 # NAT Gateway for Private Subnets
 resource "aws_eip" "nat_eip" {
   domain = "vpc"
-  tags   = merge(local.common_tags, {
+  tags = merge(local.common_tags, {
     Name = "${var.app_name}-nat-eip-${var.environment}"
   })
 }
@@ -120,7 +120,7 @@ resource "aws_eip" "nat_eip" {
 resource "aws_nat_gateway" "nat" {
   allocation_id = aws_eip.nat_eip.id
   subnet_id     = aws_subnet.public[0].id # Place NAT in a public subnet
-  tags          = merge(local.common_tags, {
+  tags = merge(local.common_tags, {
     Name = "${var.app_name}-natgw-${var.environment}"
   })
   depends_on = [aws_internet_gateway.igw]
@@ -303,7 +303,7 @@ resource "aws_security_group_rule" "db_from_ecs_ingress" {
 resource "aws_iam_role" "db_instance_role" {
   name = "${var.app_name}-db-instance-role-${var.environment}"
   assume_role_policy = jsonencode({
-    Version   = "2012-10-17",
+    Version = "2012-10-17",
     Statement = [{
       Action    = "sts:AssumeRole",
       Effect    = "Allow",
@@ -451,16 +451,16 @@ resource "aws_autoscaling_group" "db_asg" {
 resource "aws_autoscaling_policy" "db_target_tracking" {
   count = var.db_asg_max_size > 1 ? 1 : 0 # Only create policy if scaling is possible
 
-  name                    = "${var.app_name}-db-target-tracking-${var.environment}"
-  autoscaling_group_name  = aws_autoscaling_group.db_asg.name
-  policy_type             = "TargetTrackingScaling"
+  name                      = "${var.app_name}-db-target-tracking-${var.environment}"
+  autoscaling_group_name    = aws_autoscaling_group.db_asg.name
+  policy_type               = "TargetTrackingScaling"
   estimated_instance_warmup = 300
 
   target_tracking_configuration {
     predefined_metric_specification {
       predefined_metric_type = "ASGAverageCPUUtilization"
     }
-    target_value = var.db_cpu_target_high
+    target_value     = var.db_cpu_target_high
     disable_scale_in = var.db_disable_scale_in
   }
 }
@@ -498,7 +498,7 @@ resource "aws_secretsmanager_secret" "dockerhub_creds" {
 }
 
 resource "aws_secretsmanager_secret_version" "dockerhub_creds_version" {
-  secret_id     = aws_secretsmanager_secret.dockerhub_creds.id
+  secret_id = aws_secretsmanager_secret.dockerhub_creds.id
   secret_string = jsonencode({
     username = var.dockerhub_username,
     password = var.dockerhub_password,
@@ -549,7 +549,7 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   tags = local.common_tags
 
   assume_role_policy = jsonencode({
-    Version   = "2012-10-17",
+    Version = "2012-10-17",
     Statement = [{
       Action    = "sts:AssumeRole",
       Effect    = "Allow",
@@ -645,7 +645,7 @@ resource "aws_ecs_task_definition" "app_task" {
   memory                   = var.app_task_memory # Memory in MiB
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   # task_role_arn          = aws_iam_role.ecs_task_role.arn # Optional: Add if your app needs specific AWS permissions
-  tags                     = local.common_tags
+  tags = local.common_tags
 
   container_definitions = jsonencode([
     {
@@ -725,7 +725,7 @@ resource "aws_ecs_service" "app_service" {
     subnets = aws_subnet.private[*].id # Run tasks in private subnets
     security_groups = [
       aws_security_group.ecs_tasks_sg.id
-    ] # Attach the specific task security group
+    ]                        # Attach the specific task security group
     assign_public_ip = false # Tasks in private subnets don't need public IPs
   }
 
