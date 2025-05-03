@@ -699,11 +699,11 @@ resource "aws_ecs_task_definition" "app_task" {
       }
       # Define health check if your container supports it
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:${var.app_container_port}/api/health/ || exit 1"]
-        interval    = 10      # check every 10s
-        timeout     = 5       # give it 5s to respond
-        retries     = 2       # after 2 failures, mark unhealthy
-        startPeriod = 30      # allow 30s startup grace
+        command     = ["CMD-SHELL", "curl -f http://localhost:${var.app_container_port}/api/health || exit 1"]
+        interval    = 10 # check every 10s
+        timeout     = 5  # give it 5s to respond
+        retries     = 10  # after 2 failures, mark unhealthy
+        startPeriod = 60 # allow 60s startup grace
       }
     }
   ])
