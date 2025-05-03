@@ -665,7 +665,17 @@ resource "aws_ecs_task_definition" "app_task" {
         { name = "PORT", value = tostring(var.app_container_port) },
         { name = "MIX_ENV", value = "prod" },
         # Inject the database URL using the looked-up private IP
-        { name = "DATABASE_URL", value = local.database_url }
+        { name = "DATABASE_URL", value = local.database_url },
+        { name = "DB_USER", value = var.db_user },
+        { name = "DB_PASSWORD", value = var.db_password },
+        { name = "DB_NAME", value = var.db_name },
+        { name = "DB_HOST", value = data.aws_instance.db_instance.private_ip },
+        { name = "DB_PORT", value = "5432" },
+        { name = "SECRET_KEY_BASE", value = var.secret_key_base_value },
+        { name = "JWT_SECRET", value = var.jwt_secret_value },
+        { name = "JWT_SECRET_KEY", value = var.jwt_secret_value },
+        { name = "SESSION_SIGGNING_SALT", value = var.session_signing_salt_value },
+        { name = "SESSION_ENCRYPTION_SALT", value = var.session_encryption_salt_value },
         # Add other environment variables your Elixir app needs
       ]
       # If you store DB password or other secrets in Secrets Manager:
