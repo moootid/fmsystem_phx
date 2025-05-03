@@ -46,7 +46,7 @@ FROM alpine:3.21 AS app
 # Install runtime dependencies
 # openssl for crypto, ncurses for observer/debugger, libstdc++ often needed by NIFs
 # busybox-extras provides 'nc' (netcat) used in the entrypoint script
-RUN apk add --no-cache libstdc++ ncurses openssl
+RUN apk add --no-cache libstdc++ ncurses openssl curl busybox-extras
 
 # Set default ENV variables for the runner stage
 ENV LANG=C.UTF-8 \
