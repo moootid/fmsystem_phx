@@ -215,7 +215,7 @@ variable "app_asg_min_capacity" {
 variable "app_asg_max_capacity" {
   description = "Maximum number of application tasks for Auto Scaling."
   type        = number
-  default     = 4 # Adjust based on expected load
+  default     = 10 # Adjust based on expected load
 }
 
 variable "app_cpu_target_value" {
