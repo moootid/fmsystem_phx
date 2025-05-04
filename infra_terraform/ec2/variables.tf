@@ -176,7 +176,7 @@ variable "db_image_name" {
 variable "watchtower_poll_interval" {
   description = "Poll interval in seconds for Watchtower to check for container updates."
   type        = number
-  default     = 300  # Example value: 300 seconds (5 minutes)
+  default     = 300 # Example value: 300 seconds (5 minutes)
 }
 
 ##############################
@@ -194,7 +194,7 @@ variable "app_container_port" {
 variable "app_instance_type" {
   description = "EC2 instance type for hosting the Elixir application."
   type        = string
-  default     = "c7a.large" # Change to "t3.medium" if you need more capacity
+  default     = "c7a.xlarge" # Change to "t3.medium" if you need more capacity
 }
 
 variable "app_instance_volume_size_gb" {
@@ -206,7 +206,7 @@ variable "app_instance_volume_size_gb" {
 variable "sleep_interval" {
   description = "Sleep interval (in seconds) for the application to wait before starting."
   type        = number
-  default     = 30
+  default     = 15
 }
 
 variable "max_retries" {
@@ -225,19 +225,19 @@ variable "backend_domain_name" {
 variable "app_asg_min_size" {
   description = "Minimum number of application EC2 instances in the Auto Scaling Group."
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "app_asg_max_size" {
   description = "Maximum number of application EC2 instances in the Auto Scaling Group."
   type        = number
-  default     = 10
+  default     = 15
 }
 
 variable "app_asg_desired_count" {
   description = "Initial desired number of application tasks."
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "app_cpu_target_value" {
@@ -249,7 +249,7 @@ variable "app_cpu_target_value" {
 variable "app_scale_in_cooldown" {
   description = "Cooldown period (in seconds) after scale-in."
   type        = number
-  default     = 300
+  default     = 60
 }
 
 variable "app_scale_out_cooldown" {
@@ -292,3 +292,26 @@ variable "session_signing_salt_value" {
   type        = string
   sensitive   = true
 }
+
+##############################
+# Frontend Settings
+##############################
+variable "frontend_domain_name" {
+  description = "The custom domain name for the frontend (e.g., fms.yourdomain.com)."
+  type        = string
+  default     = "fms.ec2.mokh32.com"
+  # Example: default = "fms.ecs.mokh32.com" # Use your actual desired domain
+}
+
+variable "frontend_hosted_zone_id" {
+  description = "Route 53 Hosted Zone ID for the frontend domain."
+  type        = string
+  # Example: default = "Z0214201DZ82Y2OWY29K" # Use your actual zone ID
+}
+
+variable "frontend_s3_prefix" {
+  description = "Optional prefix (folder) within the S3 bucket to store frontend files."
+  type        = string
+  default     = "" # Root of the bucket by default
+}
+
