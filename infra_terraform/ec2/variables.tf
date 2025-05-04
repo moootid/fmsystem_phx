@@ -214,7 +214,11 @@ variable "max_retries" {
   type        = number
   default     = 100
 }
-
+variable "backend_domain_name" {
+  description = "Domain name for the backend application (e.g., fmsystem.ecs.mokh32.com)."
+  type        = string
+  default     = "fmsystem.ec2.mokh32.com" # Example: default = "fmsystem.ecs.mokh32.com"
+}
 ##############################
 # ECS Auto Scaling Settings (Application)
 ##############################
