@@ -197,6 +197,12 @@ variable "app_task_memory" {
   default     = 2048 # Example: 2 GiB
 }
 
+variable "backend_domain_name" {
+  description = "Domain name for the backend application (e.g., fmsystem.ecs.mokh32.com)."
+  type        = string
+  default     = "fmsystem.ecs.mokh32.com" # Example: default = "fmsystem.ecs.mokh32.com"
+}
+
 ##############################
 # ECS Auto Scaling Settings (Application)
 ##############################
