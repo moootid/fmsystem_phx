@@ -41,7 +41,8 @@ if config_env() == :prod do
     database: System.get_env("DB_NAME") || "example_db",
     hostname: System.get_env("DB_HOST") || "localhost",
     port: String.to_integer(System.get_env("DB_PORT") || "5432"),
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "100")
+    pool_size: 200,
+    checkout_timeout: 10000 # in milliseconds
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
