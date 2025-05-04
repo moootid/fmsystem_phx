@@ -13,7 +13,7 @@ variable "aws_region" {
 variable "app_name" {
   description = "Base name for the application and resources."
   type        = string
-  default     = "fmsystem"
+  default     = "fmsystem-ec2"
 }
 
 variable "environment" {
