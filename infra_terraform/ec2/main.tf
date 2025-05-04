@@ -680,6 +680,503 @@ resource "aws_lb_listener" "https_listener" {
   }
 }
 
+# --- START: Frontend Resources ---
+
+############################################################
+# Frontend: S3 Bucket for Static Hosting
+############################################################
+
+resource "aws_s3_bucket" "frontend_bucket" {
+  bucket = lower(var.frontend_domain_name) # Bucket name matches domain
+  tags = merge(local.common_tags, {
+    Name = "${var.app_name}-frontend-bucket-${var.environment}"
+  })
+}
+
+resource "aws_s3_bucket_public_access_block" "frontend_bucket_pab" {
+  bucket = aws_s3_bucket.frontend_bucket.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_versioning" "frontend_bucket_versioning" {
+  bucket = aws_s3_bucket.frontend_bucket.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_ownership_controls" "frontend_bucket_ownership" {
+  bucket = aws_s3_bucket.frontend_bucket.id
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
+
+############################################################
+# Frontend: CloudFront OAI & S3 Policy
+############################################################
+
+resource "aws_cloudfront_origin_access_identity" "frontend_oai" {
+  comment = "OAI for ${var.frontend_domain_name}"
+}
+
+data "aws_iam_policy_document" "frontend_s3_policy" {
+  statement {
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.frontend_bucket.arn}/*"]
+    principals {
+      type        = "AWS"
+      identifiers = [aws_cloudfront_origin_access_identity.frontend_oai.iam_arn]
+    }
+  }
+  # Optional: Allow deployment role to ListBucket
+  # statement { ... }
+}
+
+resource "aws_s3_bucket_policy" "frontend_bucket_policy" {
+  bucket = aws_s3_bucket.frontend_bucket.id
+  policy = data.aws_iam_policy_document.frontend_s3_policy.json
+  depends_on = [
+    aws_s3_bucket_public_access_block.frontend_bucket_pab,
+    aws_s3_bucket_ownership_controls.frontend_bucket_ownership,
+  ]
+}
+
+############################################################
+# Frontend: ACM Certificate (us-east-1) & Validation
+############################################################
+
+resource "aws_acm_certificate" "frontend_cert" {
+  provider          = aws.us-east-1 # MUST be us-east-1 for CloudFront
+  domain_name       = var.frontend_domain_name
+  validation_method = "DNS"
+  tags              = local.common_tags
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_route53_record" "frontend_cert_validation" {
+  # Use default provider for Route 53
+  for_each = {
+    for dvo in aws_acm_certificate.frontend_cert.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      type   = dvo.resource_record_type
+      record = dvo.resource_record_value
+    }
+  }
+
+  allow_overwrite = true # Required for cert renewals
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = var.frontend_hosted_zone_id # Use frontend zone ID
+}
+
+resource "aws_acm_certificate_validation" "frontend_cert_validation" {
+  provider        = aws.us-east-1 # MUST be us-east-1
+  certificate_arn = aws_acm_certificate.frontend_cert.arn
+  validation_record_fqdns = [
+    for record in aws_route53_record.frontend_cert_validation : record.fqdn
+  ]
+}
+
+############################################################
+# Frontend: CloudFront Distribution
+############################################################
+
+resource "aws_cloudfront_distribution" "frontend_distribution" {
+  origin {
+    domain_name = aws_s3_bucket.frontend_bucket.bucket_regional_domain_name
+    origin_id   = "S3-${aws_s3_bucket.frontend_bucket.id}"
+    origin_path = local.frontend_s3_origin_path # Use local variable
+
+    s3_origin_config {
+      origin_access_identity = aws_cloudfront_origin_access_identity.frontend_oai.cloudfront_access_identity_path
+    }
+  }
+
+  enabled             = true
+  is_ipv6_enabled     = true
+  comment             = "CloudFront for ${var.frontend_domain_name}"
+  default_root_object = "index.html"
+
+  aliases = [var.frontend_domain_name]
+
+  default_cache_behavior {
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "S3-${aws_s3_bucket.frontend_bucket.id}"
+
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+    min_ttl                = 0
+    default_ttl            = 3600
+    max_ttl                = 86400
+    compress               = true
+  }
+
+  # SPA Error Handling
+  custom_error_response {
+    error_caching_min_ttl = 300
+    error_code            = 403
+    response_code         = 200
+    response_page_path    = "/index.html"
+  }
+  custom_error_response {
+    error_caching_min_ttl = 300
+    error_code            = 404
+    response_code         = 200
+    response_page_path    = "/index.html"
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    # Reference the validated certificate in us-east-1
+    acm_certificate_arn      = aws_acm_certificate_validation.frontend_cert_validation.certificate_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "${var.app_name}-frontend-cf-${var.environment}"
+  })
+}
+
+############################################################
+# Frontend: Route 53 DNS Record
+############################################################
+
+resource "aws_route53_record" "frontend_domain_alias" {
+  # Use default provider
+  zone_id = var.frontend_hosted_zone_id
+  name    = var.frontend_domain_name
+  type    = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.frontend_distribution.domain_name
+    zone_id                = aws_cloudfront_distribution.frontend_distribution.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "frontend_domain_alias_ipv6" {
+  # Use default provider
+  zone_id = var.frontend_hosted_zone_id
+  name    = var.frontend_domain_name
+  type    = "AAAA"
+
+  alias {
+    name                   = aws_cloudfront_distribution.frontend_distribution.domain_name
+    zone_id                = aws_cloudfront_distribution.frontend_distribution.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+
+
+
+# --- START: Frontend Deployment EC2 IAM Resources ---
+
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+resource "aws_iam_role" "frontend_deployer_role" {
+  name = "${var.app_name}-frontend-deployer-role-${var.environment}"
+  tags = local.common_tags
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action    = "sts:AssumeRole",
+      Effect    = "Allow",
+      Principal = { Service = "ec2.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_policy" "frontend_deployer_policy" {
+  name        = "${var.app_name}-frontend-deployer-policy-${var.environment}"
+  description = "Policy for the frontend deployment EC2 instance"
+  tags        = local.common_tags
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        # Allow S3 operations on the specific frontend bucket
+        Effect = "Allow",
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:DeleteObject",
+          "s3:ListBucket"
+        ],
+        Resource = [
+          aws_s3_bucket.frontend_bucket.arn,       # Bucket ARN
+          "${aws_s3_bucket.frontend_bucket.arn}/*" # Objects within the bucket
+        ]
+      },
+      {
+        # Allow CloudFront invalidation on the specific distribution
+        Effect   = "Allow",
+        Action   = ["cloudfront:CreateInvalidation"],
+        Resource = [aws_cloudfront_distribution.frontend_distribution.arn]
+      },
+      {
+        # Allow self-termination
+        Effect   = "Allow",
+        Action   = ["ec2:TerminateInstances"],
+        Resource = ["arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:instance/*"],
+        Condition = {
+          # Restrict to only terminating itself using tags (more reliable than ARN matching at creation time)
+          # The instance will need a specific tag for this condition to work.
+          "StringEquals" = { "aws:ResourceTag/DeployerInstance" = "true" }
+        }
+        # Alternative Condition (less reliable during creation if ARN isn't immediately known):
+        # Condition = { "StringEquals" = { "ec2:InstanceID" = "${aws_instance.frontend_deployer.id}" } } # This won't work due to interpolation cycle
+      }
+      # {
+      #   # OPTIONAL: Add if moootid/fmsystem_fe is PRIVATE and you use the same Docker Hub secret
+      #   Effect   = "Allow",
+      #   Action   = ["secretsmanager:GetSecretValue"],
+      #   Resource = [local.dockerhub_secret_arn] # Reuse existing secret ARN local
+      # },
+      # {
+      #   # OPTIONAL: Allow SSM access for debugging
+      #   Effect = "Allow",
+      #   Action = [
+      #     "ssm:UpdateInstanceInformation",
+      #     "ssmmessages:CreateControlChannel",
+      #     "ssmmessages:CreateDataChannel",
+      #     "ssmmessages:OpenControlChannel",
+      #     "ssmmessages:OpenDataChannel"
+      #     ],
+      #   Resource = "*"
+      # }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "frontend_deployer_attach" {
+  role       = aws_iam_role.frontend_deployer_role.name
+  policy_arn = aws_iam_policy.frontend_deployer_policy.arn
+}
+
+# Optional: Attach SSM policy if needed for debugging
+# resource "aws_iam_role_policy_attachment" "frontend_deployer_ssm_attach" {
+#   role       = aws_iam_role.frontend_deployer_role.name
+#   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+# }
+
+resource "aws_iam_instance_profile" "frontend_deployer_profile" {
+  name = "${var.app_name}-frontend-deployer-profile-${var.environment}"
+  role = aws_iam_role.frontend_deployer_role.name
+  tags = local.common_tags
+}
+
+# --- END: Frontend Deployment EC2 IAM Resources ---
+
+# --- START: Frontend Deployment EC2 Security Group ---
+
+resource "aws_security_group" "frontend_deployer_sg" {
+  name        = "${var.app_name}-frontend-deployer-sg-${var.environment}"
+  description = "Allow egress for frontend deployer instance"
+  vpc_id      = aws_vpc.main.id # Deploy into the main VPC
+
+  # No ingress needed
+
+  egress {
+    from_port   = 443 # HTTPS for Docker Hub, AWS APIs
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    from_port   = 80 # Allow HTTP if needed (e.g., Docker Hub non-https) - less common
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    from_port   = 53 # DNS
+    to_port     = 53
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    from_port   = 53 # DNS
+    to_port     = 53
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "${var.app_name}-frontend-deployer-sg-${var.environment}"
+  })
+}
+
+# --- END: Frontend Deployment EC2 Security Group ---
+
+# --- START: Frontend Deployment EC2 User Data ---
+
+data "template_file" "frontend_deployer_user_data" {
+  template = <<-EOF
+    #!/bin/bash -xe
+    # Log output to CloudWatch Logs agent (if installed) and console
+    exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+
+    echo "User Data Script Started at $(date)"
+
+    # Instance metadata endpoint v1 (simpler for instance ID)
+    TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+    INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/instance-id)
+    AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/placement/region)
+
+    # Function to terminate the instance
+    function terminate_instance {
+      echo "Deployment script finished. Terminating instance $INSTANCE_ID in region $AWS_REGION..."
+      aws ec2 terminate-instances --region $AWS_REGION --instance-ids $INSTANCE_ID
+    }
+
+    # Ensure termination happens even if script fails after docker setup
+    trap terminate_instance EXIT TERM INT
+
+    # Install Docker
+    echo "Installing Docker..."
+    amazon-linux-extras install docker -y
+    systemctl start docker
+    systemctl enable docker
+    usermod -a -G docker ec2-user
+    echo "Docker installed and started."
+    yum install -y nmap-ncat
+    sleep 30
+    # --- Optional: Docker Hub Login (if image is private) ---
+    docker login -u "${var.dockerhub_username}" -p "${var.dockerhub_password}" docker.io
+    # --- End Optional Docker Hub Login ---
+
+    # Define deployment variables (Injected from Terraform)
+    export S3_BUCKET="${aws_s3_bucket.frontend_bucket.id}"
+    export CF_DIST_ID="${aws_cloudfront_distribution.frontend_distribution.id}"
+    export S3_PREFIX="${var.frontend_s3_prefix}"
+    export FRONTEND_IMAGE="moootid/fmsystem_fe:latest"
+    export BACKEND_URL="${var.backend_domain_name}" 
+    export LOCAL_BUILD_DIR="/app/dist"
+    export INVALIDATION_PATH="/${var.frontend_s3_prefix}*" # Path for invalidation
+    if [ -z "$S3_PREFIX" ]; then
+      export INVALIDATION_PATH="/*"
+    fi
+
+
+    # Pull the frontend deployer image
+    echo "Pulling frontend image: $FRONTEND_IMAGE..."
+    docker pull $FRONTEND_IMAGE
+    if [ $? -ne 0 ]; then
+      echo "Failed to pull Docker image!"
+      exit 1 # Exit if image pull fails
+    fi
+    echo "Image pulled successfully."
+
+    # Run the container to perform the deployment
+    # The container's setup.sh script needs AWS CLI and expects env vars
+    echo "Running deployment container..."
+    docker run \
+      -e AWS_DEFAULT_REGION=$AWS_REGION \
+      -e BACKEND_URL=${var.backend_domain_name} \
+      -e S3_WEB_BUCKET_NAME=$S3_BUCKET \
+      -e S3_PREFIX=$S3_PREFIX \
+      -e LOCAL_DIR=$LOCAL_BUILD_DIR \
+      -e DISTRIBUTION_ID=$CF_DIST_ID \
+      -e INVALIDATION_PATH=$INVALIDATION_PATH \
+      $FRONTEND_IMAGE
+
+    if [ $? -ne 0 ]; then
+      echo "Deployment container failed!"
+      exit 1 # Keep instance alive for debugging if needed, trap will terminate anyway
+    fi
+
+    echo "Deployment container finished successfully."
+    echo "User Data Script Completed at $(date)"
+
+    # Termination is handled by the trap
+  EOF
+
+  vars = {
+    s3_bucket_name             = aws_s3_bucket.frontend_bucket.id
+    cloudfront_distribution_id = aws_cloudfront_distribution.frontend_distribution.id
+    s3_prefix                  = var.frontend_s3_prefix
+    backend_url                = var.backend_domain_name # Pass the backend domain
+    # dockerhub_secret_arn      = local.dockerhub_secret_arn # Uncomment if needed
+    # Add a timestamp to force user_data changes on every apply
+    # This ensures the deployment runs each time 'terraform apply' targets it.
+    run_timestamp = timestamp()
+  }
+}
+# --- END: Frontend Deployment EC2 User Data ---
+
+
+# --- START: Frontend Deployment EC2 Instance ---
+
+resource "aws_instance" "frontend_deployer" {
+  # count = var.create_deployer_instance ? 1 : 0 # Optional: Use a variable to enable/disable
+
+  ami           = data.aws_ami.amazon_linux_2.id
+  instance_type = "c7a.medium" # Or t2.micro if preferred
+
+  # Run in a private subnet using NAT for outbound access
+  subnet_id = aws_subnet.private[0].id # Choose one private subnet
+
+  vpc_security_group_ids = [aws_security_group.frontend_deployer_sg.id]
+  iam_instance_profile   = aws_iam_instance_profile.frontend_deployer_profile.name
+
+  user_data = data.template_file.frontend_deployer_user_data.rendered
+
+  # Key pair is optional - not needed for automated task, but useful for debugging
+  key_name = var.app_ec2_key_pair_name
+
+  # Add tag used for self-termination IAM condition
+  tags = merge(local.common_tags, {
+    Name             = "${var.app_name}-frontend-deployer-${var.environment}"
+    DeployerInstance = "true"
+  })
+
+  # Ensure dependencies are created first
+  depends_on = [
+    aws_s3_bucket.frontend_bucket,
+    aws_cloudfront_distribution.frontend_distribution,
+    aws_iam_instance_profile.frontend_deployer_profile
+  ]
+
+  lifecycle {
+    # If the instance terminates itself, Terraform will see it as destroyed.
+    # create_before_destroy ensures a new one starts building before the old one
+    # (if it still exists somehow) is considered gone by Terraform.
+    # The timestamp in user_data forces replacement anyway.
+    create_before_destroy = true
+  }
+}
+
+# --- END: Frontend Deployment EC2 Instance ---
+
+
+
 ############################################################
 # Outputs
 ############################################################
@@ -697,4 +1194,19 @@ output "db_instance_private_ip" {
 output "dockerhub_secret_arn_output" {
   description = "ARN of the Secrets Manager secret for Docker Hub credentials"
   value       = aws_secretsmanager_secret.dockerhub_creds.arn
+}
+
+output "frontend_s3_bucket_name" {
+  description = "Name of the S3 bucket hosting the frontend static files."
+  value       = aws_s3_bucket.frontend_bucket.id
+}
+
+output "frontend_cloudfront_distribution_id" {
+  description = "ID of the CloudFront distribution for the frontend."
+  value       = aws_cloudfront_distribution.frontend_distribution.id
+}
+
+output "frontend_url" {
+  description = "URL of the deployed frontend."
+  value       = "https://${var.frontend_domain_name}"
 }
