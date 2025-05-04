@@ -865,7 +865,7 @@ resource "aws_lb_listener" "http_listener" {
 ############################################################
 
 resource "aws_acm_certificate" "app_cert" {
-  domain_name       = "fmsystem.mokh32.com" # Replace with your actual domain
+  domain_name       = var.backend_domain_name # Replace with your actual domain
   validation_method = "DNS"
   tags              = local.common_tags
 
@@ -895,11 +895,11 @@ resource "aws_acm_certificate_validation" "app_cert_validation" {
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
 }
 
-# Route 53 DNS record to map fmsystem.mokh32.com to the ALB
+# Route 53 DNS record to map fmsystem.ecs.mokh32.com to the ALB
 resource "aws_route53_record" "app_domain" {
   # Replace with your actual Route 53 Hosted Zone ID
   zone_id = "Z0214201DZ82Y2OWY29K"
-  name    = "fmsystem" # The subdomain part
+  name    = "fmsystem.ecs" # The subdomain part
   type    = "A"
 
   alias {
