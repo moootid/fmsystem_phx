@@ -46,6 +46,9 @@ locals {
   # If the DB instance is replaced, the ECS tasks need to be restarted
   # (e.g., by updating the service or task definition) to pick up the new IP.
   database_url = "ecto://${var.db_user}:${var.db_password}@${data.aws_instance.db_instance.private_ip}:5432/${var.db_name}"
+
+  # Construct frontend S3 origin path correctly (handle empty string case)
+  frontend_s3_origin_path = var.frontend_s3_prefix == "" ? null : "/${trimprefix(var.frontend_s3_prefix, "/")}"
 }
 
 ############################################################

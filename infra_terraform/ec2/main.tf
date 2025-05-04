@@ -39,6 +39,11 @@ locals {
   app_image_uri = "${var.dockerhub_username}/${var.app_image_name}:${var.app_image_tag}"
 
   dockerhub_secret_arn = aws_secretsmanager_secret.dockerhub_creds.arn
+
+  database_url = "ecto://${var.db_user}:${var.db_password}@${data.aws_instance.db_instance.private_ip}:5432/${var.db_name}"
+
+  # Construct frontend S3 origin path correctly (handle empty string case)
+  frontend_s3_origin_path = var.frontend_s3_prefix == "" ? null : "/${trimprefix(var.frontend_s3_prefix, "/")}"
 }
 
 ############################################################
