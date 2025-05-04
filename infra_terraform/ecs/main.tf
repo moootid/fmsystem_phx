@@ -711,7 +711,7 @@ resource "aws_ecs_task_definition" "app_task" {
         command     = ["CMD-SHELL", "curl -f http://localhost:${var.app_container_port}/api/health || exit 1"]
         interval    = 10 # check every 10s
         timeout     = 5  # give it 5s to respond
-        retries     = 10  # after 2 failures, mark unhealthy
+        retries     = 10 # after 2 failures, mark unhealthy
         startPeriod = 60 # allow 60s startup grace
       }
     }

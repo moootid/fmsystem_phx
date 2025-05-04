@@ -74,8 +74,8 @@ resource "aws_subnet" "public" {
 
 # Private Subnets (for the DB instance)
 resource "aws_subnet" "private" {
-  count                   = var.private_subnet_count
-  vpc_id                  = aws_vpc.main.id
+  count  = var.private_subnet_count
+  vpc_id = aws_vpc.main.id
   # Offset subnet indices so private subnets don’t overlap with public
   cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index + var.public_subnet_count)
   map_public_ip_on_launch = false
@@ -116,7 +116,7 @@ resource "aws_route_table_association" "public" {
 # NAT Gateway for Private Subnets
 resource "aws_eip" "nat_eip" {
   domain = "vpc"
-  tags   = merge(local.common_tags, {
+  tags = merge(local.common_tags, {
     Name = "${var.app_name}-nat-eip-${var.environment}"
   })
 }
@@ -124,7 +124,7 @@ resource "aws_eip" "nat_eip" {
 resource "aws_nat_gateway" "nat" {
   allocation_id = aws_eip.nat_eip.id
   subnet_id     = aws_subnet.public[0].id
-  tags          = merge(local.common_tags, {
+  tags = merge(local.common_tags, {
     Name = "${var.app_name}-natgw-${var.environment}"
   })
 }
@@ -172,14 +172,14 @@ resource "aws_security_group" "alb_sg" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  
+
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  
+
   tags = merge(local.common_tags, {
     Name = "${var.app_name}-alb-sg-${var.environment}"
   })
@@ -210,7 +210,7 @@ resource "aws_security_group" "app_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  
+
   tags = merge(local.common_tags, {
     Name = "${var.app_name}-app-sg-${var.environment}"
   })
@@ -235,14 +235,14 @@ resource "aws_security_group" "db_sg" {
     protocol    = "tcp"
     cidr_blocks = [var.ssh_access_cidr]
   }
-  
+
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  
+
   tags = merge(local.common_tags, {
     Name = "${var.app_name}-db-sg-${var.environment}"
   })
@@ -267,7 +267,7 @@ resource "aws_security_group_rule" "app_to_db" {
 resource "aws_iam_role" "db_instance_role" {
   name = "${var.app_name}-db-instance-role-${var.environment}"
   assume_role_policy = jsonencode({
-    Version   = "2012-10-17",
+    Version = "2012-10-17",
     Statement = [{
       Action    = "sts:AssumeRole",
       Effect    = "Allow",
@@ -396,9 +396,9 @@ resource "aws_autoscaling_group" "db_asg" {
 
 # Auto Scaling Policy for the DB instance (target tracking CPU utilization)
 resource "aws_autoscaling_policy" "db_target_tracking" {
-  name                    = "${var.app_name}-db-target-tracking-${var.environment}"
-  autoscaling_group_name  = aws_autoscaling_group.db_asg.name
-  policy_type             = "TargetTrackingScaling"
+  name                      = "${var.app_name}-db-target-tracking-${var.environment}"
+  autoscaling_group_name    = aws_autoscaling_group.db_asg.name
+  policy_type               = "TargetTrackingScaling"
   estimated_instance_warmup = 300
 
   target_tracking_configuration {
@@ -437,7 +437,7 @@ resource "aws_secretsmanager_secret" "dockerhub_creds" {
 }
 
 resource "aws_secretsmanager_secret_version" "dockerhub_creds_version" {
-  secret_id     = aws_secretsmanager_secret.dockerhub_creds.id
+  secret_id = aws_secretsmanager_secret.dockerhub_creds.id
   secret_string = jsonencode({
     username = var.dockerhub_username,
     password = var.dockerhub_password,
@@ -570,16 +570,16 @@ resource "aws_autoscaling_group" "app_asg" {
 }
 
 resource "aws_autoscaling_policy" "app_target_tracking" {
-  name                     = "${var.app_name}-app-target-tracking-${var.environment}"
-  autoscaling_group_name   = aws_autoscaling_group.app_asg.name
-  policy_type              = "TargetTrackingScaling"
+  name                      = "${var.app_name}-app-target-tracking-${var.environment}"
+  autoscaling_group_name    = aws_autoscaling_group.app_asg.name
+  policy_type               = "TargetTrackingScaling"
   estimated_instance_warmup = 300
 
   target_tracking_configuration {
     predefined_metric_specification {
       predefined_metric_type = "ASGAverageCPUUtilization"
     }
-    target_value       = var.app_cpu_target_value
+    target_value = var.app_cpu_target_value
   }
 }
 
@@ -613,7 +613,7 @@ resource "aws_lb_target_group" "app_tg" {
     healthy_threshold   = 2
     unhealthy_threshold = 2
   }
-    # ————————————— Optional: enable sticky sessions —————————————
+  # ————————————— Optional: enable sticky sessions —————————————
   # stickiness {
   #   type            = "lb_cookie"
   #   enabled         = true
