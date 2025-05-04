@@ -3,6 +3,12 @@ provider "aws" {
   region = var.aws_region
 }
 
+provider "aws" {
+  # ALIASED PROVIDER - Used ONLY for CloudFront's ACM certificate resources.
+  alias  = "us-east-1"
+  region = "us-east-1"
+}
+
 ############################################################
 # Data Sources & Locals
 ############################################################
