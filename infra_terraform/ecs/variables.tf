@@ -282,14 +282,29 @@ variable "session_signing_salt_value" {
   sensitive   = true
 }
 
+##############################
+# Frontend Settings
+##############################
+variable "frontend_domain_name" {
+  description = "The custom domain name for the frontend (e.g., fms.yourdomain.com)."
+  type        = string
+  default = "fms.ecs.mokh32.com" 
+  # Example: default = "fms.ecs.mokh32.com" # Use your actual desired domain
+}
 
-# Removed EC2 specific variables:
-# - app_ec2_key_pair_name
-# - app_instance_type
-# - app_instance_volume_size_gb
-# - sleep_interval
-# - max_retries
-# - watchtower_poll_interval
-# - app_asg_min_size (renamed)
-# - app_asg_max_size (renamed)
-# - app_asg_desired_count (renamed)
+variable "frontend_hosted_zone_id" {
+  description = "Route 53 Hosted Zone ID for the frontend domain."
+  type        = string
+  # Example: default = "Z0214201DZ82Y2OWY29K" # Use your actual zone ID
+}
+
+variable "frontend_s3_prefix" {
+  description = "Optional prefix (folder) within the S3 bucket to store frontend files."
+  type        = string
+  default     = "" # Root of the bucket by default
+}
+
+variable "app_ec2_key_pair_name" {
+  description = "Name of the EC2 key pair for SSH access to the app instance."
+  type        = string
+}
