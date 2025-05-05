@@ -194,7 +194,7 @@ variable "app_container_port" {
 variable "app_instance_type" {
   description = "EC2 instance type for hosting the Elixir application."
   type        = string
-  default     = "c7a.xlarge" # Change to "t3.medium" if you need more capacity
+  default     = "c7a.medium" # Change to "t3.medium" if you need more capacity
 }
 
 variable "app_instance_volume_size_gb" {
