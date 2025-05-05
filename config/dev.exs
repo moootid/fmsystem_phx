@@ -12,8 +12,8 @@ config :fmsystem, Fmsystem.Repo,
   hostname: System.get_env("DB_HOST") || "localhost",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
-  pool_size: String.to_integer(System.get_env("POOL_SIZE") || "200"),
-  checkout_timeout: 10000 # in milliseconds
+  pool_size: String.to_integer(System.get_env("POOL_SIZE") || "50")
+  # checkout_timeout: 10000 # in milliseconds
 
 # For development, we disable any cache and enable
 # debugging and code reloading.
